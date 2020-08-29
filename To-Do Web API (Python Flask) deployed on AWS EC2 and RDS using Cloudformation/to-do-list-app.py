@@ -183,7 +183,7 @@ def update_task(task_id):
 # and assign to the static route of ('/tasks/<int:task_id>')
 @app.route('/tasks/<int:task_id>', methods=['DELETE'])
 def delete_task(task_id):
-    task = find_task(task_id)
+    task = find_tasks(task_id)
     if task == None:
         abort(404)
     return jsonify({'result': remove_task(task)})
@@ -203,3 +203,4 @@ if __name__ == "__main__":
 
 # 10: 13
 # echo "{MyRDSInstance}" > /home/ec2-user/dbserver.endpoint
+
