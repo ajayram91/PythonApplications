@@ -3,10 +3,10 @@ from flask import Flask, jsonify, abort, request
 from flask_sqlalchemy import SQLAlchemy
 # Create an object named app
 app = Flask(__name__)
-# Configure sqlite database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./todolist.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Configure mysql database
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://admin:password@database-3.cgy9ixalilkj.us-east-1.rds.amazonaws.com/task'
 db = SQLAlchemy(app)
+
 
 # Write a function named `init_taskdb` which initializes the tasks db
 # Create task table within sqlite db and populate with sample data
@@ -196,3 +196,10 @@ if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80)
 
 
+# db_endpoint = open("/home/ec2-user/dbserver.endpoint", 'r', encoding='UTF-8')
+# db_endpoint.readline().strip()
+# db_endpoint.close()
+
+
+# 10: 13
+# echo "{MyRDSInstance}" > /home/ec2-user/dbserver.endpoint
