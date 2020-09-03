@@ -1,12 +1,25 @@
 # Import Flask modules
 from flask import Flask, jsonify, abort, request
-from flask_sqlalchemy import SQLAlchemy
+from flaskext.mysql import MySQL
 # Create an object named app
 app = Flask(__name__)
-# Configure mysql database
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://admin:password@database-3.cgy9ixalilkj.us-east-1.rds.amazonaws.com/task'
-db = SQLAlchemy(app)
 
+# GET DB endpoint 
+db_endpoint = open("/home/ec2-user/dbserver.endpoint", 'r', encoding='UTF-8')
+
+#Configure mysql database 
+app.config['MYSQL_DATABASE_HOST'] = db_endpoint.readline().strip()
+app.config['MYSQL_DATABASE_USER'] = 'admin'
+app.config['MYSQL_DATABASE_PASSWORD'] = 'password'
+app.config['MYSQL_DATABASE_DB'] = 'tasks_db'
+app.config['MYSQL_DATABASE_PORT'] = 3306
+
+db_enpoint.close()
+mysql = MYSQL()
+mysql.init_app(app)
+connection = mysql.connect()
+connection.autocommit(True)
+cursor = connection.cursor()
 
 # Write a function named `init_taskdb` which initializes the tasks db
 # Create task table within sqlite db and populate with sample data
@@ -14,7 +27,7 @@ db = SQLAlchemy(app)
 
 
 def init_task_db():
-    drop_table = 'DROP TABLE IF EXISTS tasks;'
+    drop_table = 'DROP TABLE IF EXISTS tasks_db.tasks;'
     tasks_table = """
     CREATE TABLE tasks(
     task_id INTEGER PRIMARY KEY,
@@ -23,16 +36,15 @@ def init_task_db():
     is_done BOOLEAN NOT NULL DEFAULT 0 CHECK(is_done IN(0,1)));
     """
     data = """
-    INSERT INTO tasks (title, description, is_done)
+    INSERT INTO tasks_db.tasks (title, description, is_done)
     VALUES
         ("Grocery Shopping", "Buy weekly meal prep supplies", 1 ),
         ("Haircut", "Haircut Appointment at 5pm", 0),
         ("Project 103", "Finish Project 103", 0);
     """
-    db.session.execute(drop_table)
-    db.session.execute(tasks_table)
-    db.session.execute(data)
-    db.session.commit()
+    cursor.execute(drop_table)
+    cursor.execute(tasks_table)
+    cursor.execute(data)
 
 
 # Write a function named `get_all_tasks` which gets all tasks from the tasks table in the db,
@@ -44,8 +56,8 @@ def get_all_tasks():
     query = """
     SELECT * FROM tasks;
     """
-
-    result = db.session.execute(query)
+    cursor.execute(query)
+    result = cursor.fetchall()
     tasks = [{'task_id': row[0], 'title':row[1], 'description':row[2],
               'is_done': bool(row[3])} for row in result]
     return tasks
@@ -60,7 +72,7 @@ def find_tasks(id):
     SELECT * FROM tasks WHERE task_id={id};
     """
 
-    row = db.session.execute(query).first()
+    row = curor.fetchone()
     task = None
     if row is not None:
         task = {'task_id': row[0], 'title': row[1], 'description': row[2], 'is_done': bool(row[3])}
@@ -76,14 +88,12 @@ def insert_task(title, description):
     INSERT INTO tasks (title, description)
     VALUES ('{title}', '{description}');
     """
-    result = db.session.execute(insert)
-    db.session.commit()
-
+    cursor.execute(insert)
     query = f"""
-    SELECT * FROM tasks WHERE task_id={result.lastrowid};
+    SELECT * FROM tasks WHERE task_id={cursor.lastrowid};
     """
-    row = db.session.execute(query).first()
-
+    cursor.execute(query)
+    row = cursor.fetchone()
     return {'task_id': row[0], 'title': row[1], 'description': row[2], 'is_done': bool(row[3])}
 
 # Write a function named `change_task` which updates tasks into the task table in the db,
@@ -98,14 +108,15 @@ def change_task(task):
     WHERE task_id= {task['task_id']};
     """
 
-    result = db.session.execute(update)
-    db.session.commit()
+    cursor.execute(update)
 
     query = f"""
     SELECT * FROM tasks WHERE task_id={task['task_id']};
     """
-    row = db.session.execute(query).first()
-    return {'task_id': row[0], 'title': row[1], 'description': row[2], 'is_done': bool(row[3])}
+    cursor.execute(query)
+    row = cursor.fetchone()
+    task = {'task_id': row[0], 'title': row[1], 'description': row[2], 'is_done': bool(row[3])}
+    return task
 
 # Write a function named `remove_task` which removes task from the tasks table in the db,
 # and returns True if successfully completed or False.
@@ -117,13 +128,13 @@ def remove_task(task):
     WHERE task_id= {task['task_id']};
     """
 
-    result = db.session.execute(delete)
-    db.session.commit()
+    cursor.execute(delete)
 
     query = f"""
     SELECT * FROM tasks WHERE task_id={task['task_id']};
     """
-    row = db.session.execute(query).first()
+    cursor.execute(query)
+    row = cursor.fetchone()
 
     return True if row is None else False
 
@@ -188,7 +199,16 @@ def delete_task(task_id):
         abort(404)
     return jsonify({'result': remove_task(task)})
 
+#write error handler function for 404
+@app.errorhandler(404)
+def not_found(error)
+    return make_response(jsonify({'error': 'Not found'}), 404)
 
+#write error handler function for 404
+@app.errorhandler(400)
+def not_found(error)
+    return make_response(jsonify({'error': 'Not found'}), 400)
+    
 # Add a statement to run the Flask application which can be reached from any host on port 5000.
 if __name__ == "__main__":
     init_task_db()
